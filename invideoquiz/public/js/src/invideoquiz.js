@@ -27,8 +27,8 @@ function InVideoQuizXBlock(runtime, element) {
     // Waiting 1.5 seconds to make sure we are moved to the next second and we don't get a double firing
     var displayIntervalTimeout = 1500;
 
-    $(function () {
-        $('#seq_content .vert-mod .vert').each(function () {
+    $(function() {
+        $('#seq_content .vert-mod .vert').each(function() {
             var component = $(this);
 
             if (studentMode) {
@@ -39,8 +39,8 @@ function InVideoQuizXBlock(runtime, element) {
         });
 
         if (studentMode) {
-          knownDimensions = getDimensions();
-          bindVideoEvents();
+            knownDimensions = getDimensions();
+            bindVideoEvents();
         }
     });
 
@@ -49,9 +49,10 @@ function InVideoQuizXBlock(runtime, element) {
         if (componentIsVideo) {
             video = $('.video', component);
         } else {
-            $.each(problemTimesMap, function (time, componentId) {
+            $.each(problemTimesMap, function(time, componentId) {
                 if (component.data('id').indexOf(componentId) !== -1) {
                     component.addClass('in-video-problem-wrapper');
+                    $('.xblock-student_view', component).append(extraVideoButton).addClass('in-video-problem').hide();
                 }
             });
         }
@@ -62,9 +63,9 @@ function InVideoQuizXBlock(runtime, element) {
         var height = $('.tc-wrapper', video).css('height');
         var width = $('.tc-wrapper', video).css('width');
         return {
-          'top': position,
-          'height': height,
-          'width': width
+            'top': position,
+            'height': height,
+            'width': width
         };
     }
 
@@ -80,7 +81,7 @@ function InVideoQuizXBlock(runtime, element) {
     }
 
     function showProblemTimesToInstructor(component) {
-        $.each(problemTimesMap, function (time, componentId) {
+        $.each(problemTimesMap, function(time, componentId) {
             var isInVideoComponent = component.data('id').indexOf(componentId) !== -1;
             if (isInVideoComponent) {
                 var minutes = parseInt(time / 60, 10);
@@ -90,7 +91,7 @@ function InVideoQuizXBlock(runtime, element) {
             }
         });
     }
-    
+
     function resizeInVideoProblem(currentProblem, dimensions) {
         currentProblem.css(dimensions);
     }
@@ -102,76 +103,71 @@ function InVideoQuizXBlock(runtime, element) {
         var resizeIntervalObject;
         var problemToDisplay;
 
-        $('.video-controls .secondary-controls').append('<button class="btn-problems-toggle"></button>');
+        // $('.video-controls .secondary-controls').append('<button class="btn-problems-toggle"></button>');
 
-        $('.btn-problems-toggle').text(window.gettext('Disable Problems'));
+        // $('.btn-problems-toggle').text(window.gettext('Disable Problems'));
 
-        $('.btn-problems-toggle').click(function () {
-            if (showProblemsAsPopup) {
-                showProblemsAsPopup = false;
-                $(this).text(window.gettext('Enable Problems'));
+        // $('.btn-problems-toggle').click(function() {
+        //     if (showProblemsAsPopup) {
+        //         showProblemsAsPopup = false;
+        //         $(this).text(window.gettext('Enable Problems'));
+        //     } else {
+        //         showProblemsAsPopup = true;
+        //         $(this).text(window.gettext('Disable Problems'));
+        //     }
+        // });
+
+        video.on('play', function() {
+            videoState = videoState || video.data('video-player-state');
+
+            clearInterval(resizeIntervalObject);
+
+            if (problemToDisplay) {
+                window.setTimeout(function() {
+                    canDisplayProblem = true;
+                }, displayIntervalTimeout);
+                problemToDisplay.hide();
+                problemToDisplay = null;
             }
-            else {
-                showProblemsAsPopup = true;
-                $(this).text(window.gettext('Disable Problems'));
-            }
-        });
 
-        video.on('play', function () {
-          videoState = videoState || video.data('video-player-state');
-
-          clearInterval(resizeIntervalObject);
-
-          if (problemToDisplay) {
-            window.setTimeout(function () {
-              canDisplayProblem = true;
-            }, displayIntervalTimeout);
-            problemToDisplay = null;
-          }
-
-          intervalObject = setInterval(function () {
-            var videoTime = parseInt(videoState.videoPlayer.currentTime, 10);
-            var problemToDisplayId = problemTimesMap[videoTime];
-            if (problemToDisplayId && canDisplayProblem) {
-              $('#seq_content .vert-mod .vert').each(function () {
-                var isProblemToDisplay = $(this).data('id').indexOf(problemToDisplayId) !== -1;
-                if (isProblemToDisplay && showProblemsAsPopup) {
-                  videoState.videoPlayer.pause();
-                  problemToDisplay = $('#problem_' + problemToDisplayId);
-                  var problemToDisplayParent = $('#problem_' + problemToDisplayId).parent();
-                  problemToDisplayParent.dialog({
-                      modal: true,
-                      width: "70%",
-                      buttons: [{
-                        text: window.gettext('Close'),
-                        click: function() {
-                          $(this).dialog("destroy");
-                          video.focus();
-                          videoState.videoPlayer.play();
+            intervalObject = setInterval(function() {
+                var videoTime = parseInt(videoState.videoPlayer.currentTime, 10);
+                var problemToDisplayId = problemTimesMap[videoTime];
+                if (problemToDisplayId && canDisplayProblem) {
+                    $('.wrapper-downloads, .video-controls', video).hide();
+                    $('#seq_content .vert-mod .vert').each(function() {
+                        var isProblemToDisplay = $(this).data('id').indexOf(problemToDisplayId) !== -1;
+                        if (isProblemToDisplay) {
+                            problemToDisplay = $('.xblock-student_view', this)
+                            videoState.videoPlayer.pause();
+                            resizeInVideoProblem(problemToDisplay, getDimensions());
+                            problemToDisplay.show();
+                            problemToDisplay.css({
+                                display: 'block'
+                            });
+                            canDisplayProblem = false;
                         }
-                      }]
-                  });
-                  problemToDisplayParent.attr('aria-live', 'assertive');
-                  problemToDisplayParent.prepend('<span class="sr">Video paused. Please answer this question.</span>');
-                  canDisplayProblem = false;
+                    });
                 }
-              });
-            }
-          }, displayIntervalTime);
+            }, displayIntervalTime);
         });
 
-        video.on('pause', function () {
-          videoState = videoState || video.data('video-player-state');
-          clearInterval(intervalObject);
-          if (problemToDisplay) {
-            resizeIntervalObject = setInterval(function () {
-              var currentDimensions = getDimensions();
-              if (dimensionsHaveChanged(currentDimensions)) {
-                    resizeInVideoProblem(problemToDisplay, currentDimensions);
-                    knownDimensions = currentDimensions;
-              }
-            }, resizeIntervalTime);
-          }
+        video.on('pause', function() {
+            videoState = videoState || video.data('video-player-state');
+            clearInterval(intervalObject);
+            if (problemToDisplay) {
+                resizeIntervalObject = setInterval(function() {
+                    var currentDimensions = getDimensions();
+                    if (dimensionsHaveChanged(currentDimensions)) {
+                        resizeInVideoProblem(problemToDisplay, currentDimensions);
+                        knownDimensions = currentDimensions;
+                    }
+                }, resizeIntervalTime);
+                $('.in-video-continue', problemToDisplay).on('click', function() {
+                    $('.wrapper-downloads, .video-controls', video).show();
+                    videoState.videoPlayer.play();
+                });
+            }
         });
     }
 }
